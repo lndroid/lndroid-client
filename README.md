@@ -3,7 +3,7 @@ Lndroid.Client - connect to Lightning wallets on Android
 
 Lndroid.Client is a client library for the IPC API of [Lndroid.Framework](https://github.com/lndroid/lndroid-framework/). Since the API is based on built-in Android components like Messenger, Binder and Handler, the code is the same both for in-process and inter-process access. The code is simply a subset of Lndroid.Framework source files, hosted in this separate repo. 
 
-To see a wallet based on Lndroid.Framework, check [Lndroid.Wallet](https://github.com/lndroid/lndroid-wallet/). To see an app integrated with a Lightning wallet, check [Lndroid.Messenger](https://github.com/lndroid/lndroid-messenger/).
+To see a wallet based on Lndroid.Framework, check [Lndroid.Wallet](https://github.com/lndroid/lndroid-wallet/). To see an app integrated with the framework-based wallet, check [Lndroid.Messenger](https://github.com/lndroid/lndroid-messenger/).
 
 To see sample app+wallet in action, check this video.
 
