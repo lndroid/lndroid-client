@@ -5,7 +5,7 @@ Lndroid.Client is a client library for the IPC API of [Lndroid.Framework](https:
 
 To see a wallet based on Lndroid.Framework, check [Lndroid.Wallet](https://github.com/lndroid/lndroid-wallet/). To see an app integrated with the framework-based wallet, check [Lndroid.Messenger](https://github.com/lndroid/lndroid-messenger/).
 
-To see sample app+wallet in action, check this video.
+To see a sample app+wallet in action, check [this video](https://www.youtube.com/watch?v=bF-1QxFTvHU), with description available [here](https://github.com/lndroid/lndroid-wallet/#here-is-what-you-see-on-the-lndroid-demo-video).
 
 # TODO
 
