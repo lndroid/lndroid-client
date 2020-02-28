@@ -5,14 +5,13 @@ import java.lang.reflect.Type;
 
 import org.lndroid.framework.WalletData;
 import org.lndroid.framework.client.IPluginClient;
-import org.lndroid.framework.common.DefaultPlugins;
+import org.lndroid.framework.defaults.DefaultPlugins;
 import org.lndroid.framework.common.IPluginData;
-import org.lndroid.framework.usecases.ActionUseCaseBase;
 
 public class ActionAddAppContact extends ActionUseCaseBase<WalletData.AddAppContactRequest, WalletData.Contact> {
 
     public ActionAddAppContact(IPluginClient client) {
-        super(DefaultPlugins.ADD_CONTACT_APP, client, "ActionAddAppContact");
+        super(DefaultPlugins.ADD_APP_CONTACT, client, "ActionAddAppContact");
     }
 
     @Override

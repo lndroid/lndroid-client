@@ -17,7 +17,10 @@ public class Errors {
     public static final String NO_WALLET = "org.lndroid.errors.NO_WALLET";
 
     // wallet locked, need UI to unlock it
-    public static final String LOCKED = "org.lndroid.errors.LOCKED";
+    public static final String WALLET_LOCKED = "org.lndroid.errors.WALLET_LOCKED";
+
+    // device locked, txs from user roles are rejected
+    public static final String DEVICE_LOCKED = "org.lndroid.errors.DEVICE_LOCKED";
 
     // transaction timed out, authorization of this tx is no longer possible,
     // receiving data for this tx is no longer possible
@@ -28,6 +31,12 @@ public class Errors {
 
     // server terminated the transaction
     public static final String TX_DONE = "org.lndroid.errors.TX_DONE";
+
+    // wrong message format, version, timestamp, etc
+    public static final String MESSAGE_FORMAT = "org.lndroid.errors.MESSAGE_FORMAT";
+
+    // wrong message auth info like signature or session token
+    public static final String MESSAGE_AUTH = "org.lndroid.errors.MESSAGE_AUTH";
 
     // wrong message pattern for the called plugin
     public static final String PLUGIN_PROTOCOL = "org.lndroid.errors.PLUGIN_PROTOCOL";
@@ -44,12 +53,11 @@ public class Errors {
     // invalid auth request id, etc
     public static final String AUTH_INPUT = "org.lndroid.errors.AUTH_INPUT";
 
-    // IPC server failed, reconnect and retry
+    // IPC server failed, reconnect and retry (returned by client-side to calling code)
     public static final String IPC_ERROR = "org.lndroid.errors.IPC_ERROR";
 
-    // FIXME why separate errors for these?
-    public static final String PAYMENT_NO_HASH = "org.lndroid.errors.PAYMENT_NO_HASH";
-    public static final String PAYMENT_BAD_INPUT = "org.lndroid.errors.PAYMENT_BAD_INPUT";
+    // IPC server identity changed, need to run connect-to-wallet flow
+    public static final String IPC_IDENTITY_ERROR = "org.lndroid.errors.IPC_IDENTITY_ERROR";
 
     public static String errorMessage(String e) {
         switch (e) {
@@ -58,17 +66,19 @@ public class Errors {
             case REJECTED: return "Call rejected";
             case WALLET_ERROR: return "Internal wallet error";
             case NO_WALLET: return "Wallet not found";
-            case LOCKED: return "Wallet locked";
+            case WALLET_LOCKED: return "Wallet locked";
+            case DEVICE_LOCKED: return "Device locked";
             case PLUGIN_INPUT: return "Invalid plugin input";
             case TX_TIMEOUT: return "Transaction time out";
-            case PAYMENT_NO_HASH: return "Payment hash not provided";
-            case PAYMENT_BAD_INPUT: return "Payment has wrong parameters";
             case TX_INVALIDATE: return "Data set invalidated";
             case TX_DONE: return "Transaction finished";
             case PLUGIN_PROTOCOL: return "Plugin protocol error";
             case PLUGIN_MESSAGE: return "Plugin message error";
+            case MESSAGE_FORMAT: return "Bad message format";
+            case MESSAGE_AUTH: return "Message auth failed";
             case LND_ERROR: return "Lnd error";
             case IPC_ERROR: return "IPC error";
+            case IPC_IDENTITY_ERROR: return "IPC server identity error";
             case AUTH_INPUT: return "Unknown auth request";
         }
 

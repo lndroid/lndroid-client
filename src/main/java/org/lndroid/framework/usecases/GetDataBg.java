@@ -2,7 +2,7 @@ package org.lndroid.framework.usecases;
 
 import java.lang.reflect.Type;
 
-import org.lndroid.framework.IResponseCallback;
+import org.lndroid.framework.common.IResponseCallback;
 import org.lndroid.framework.WalletData;
 import org.lndroid.framework.WalletDataDecl;
 import org.lndroid.framework.client.IPluginClient;
@@ -41,6 +41,8 @@ public abstract class GetDataBg<DataType, /*optional*/IdType> {
     protected abstract Type getRequestType();
 
     public void start() {
+        if (cb_ == null)
+            throw new RuntimeException("Get callback not specified");
         if (tx_ != null)
             throw new RuntimeException("Tx already started");
 

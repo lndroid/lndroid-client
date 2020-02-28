@@ -1,22 +1,22 @@
 package org.lndroid.framework.usecases;
 
-import java.io.IOException;
-import java.lang.reflect.Type;
-
 import org.lndroid.framework.WalletData;
 import org.lndroid.framework.WalletDataDecl;
 import org.lndroid.framework.client.IPluginClient;
 import org.lndroid.framework.common.IPluginData;
 import org.lndroid.framework.defaults.DefaultPlugins;
 
-public class ListPayments extends ListData<WalletData.ListPaymentsRequest, WalletData.Payment> {
-    public ListPayments(IPluginClient client) {
-        super(client, DefaultPlugins.LIST_PAYMENTS);
+import java.io.IOException;
+import java.lang.reflect.Type;
+
+public class ListPeers extends ListData<WalletData.ListPeersRequest, WalletData.Peer> {
+    public ListPeers(IPluginClient client) {
+        super(client, DefaultPlugins.LIST_PEERS);
     }
 
     @Override
-    protected WalletDataDecl.ListResultTmpl<WalletData.Payment> getData(IPluginData in) {
-        in.assignDataType(WalletData.ListPaymentsResult.class);
+    protected WalletDataDecl.ListResultTmpl<WalletData.Peer> getData(IPluginData in) {
+        in.assignDataType(WalletData.ListPeersResult.class);
         try {
             return in.getData();
         } catch (IOException e) {
@@ -26,6 +26,6 @@ public class ListPayments extends ListData<WalletData.ListPaymentsRequest, Walle
 
     @Override
     protected Type getRequestType() {
-        return WalletData.ListPaymentsRequest.class;
+        return WalletData.ListPeersRequest.class;
     }
 }

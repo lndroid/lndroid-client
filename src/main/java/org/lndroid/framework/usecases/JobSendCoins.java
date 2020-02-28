@@ -2,20 +2,20 @@ package org.lndroid.framework.usecases;
 
 import org.lndroid.framework.WalletData;
 import org.lndroid.framework.client.IPluginClient;
-import org.lndroid.framework.defaults.DefaultPlugins;
 import org.lndroid.framework.common.IPluginData;
+import org.lndroid.framework.defaults.DefaultPlugins;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
 
-public class GetChannel extends GetData<WalletData.Channel, Long> {
-    public GetChannel(IPluginClient client){
-        super(client, DefaultPlugins.GET_CHANNEL);
+public class JobSendCoins extends ActionUseCaseBase<WalletData.SendCoinsRequest, WalletData.Transaction> {
+    public JobSendCoins(IPluginClient client) {
+        super(DefaultPlugins.SEND_COINS, client, "JobSendCoins");
     }
 
     @Override
-    protected WalletData.Channel getData(IPluginData in) {
-        in.assignDataType(WalletData.Channel.class);
+    protected WalletData.Transaction getData(IPluginData in) {
+        in.assignDataType(WalletData.Transaction.class);
         try {
             return in.getData();
         } catch (IOException e) {
@@ -25,7 +25,7 @@ public class GetChannel extends GetData<WalletData.Channel, Long> {
 
     @Override
     protected Type getRequestType() {
-        return WalletData.GetRequestLong.class;
+        return WalletData.SendCoinsRequest.class;
     }
 }
 

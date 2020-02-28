@@ -20,7 +20,11 @@ import java.util.Map;
 import java.util.Queue;
 
 import org.lndroid.framework.WalletData;
+import org.lndroid.framework.common.Errors;
 import org.lndroid.framework.common.ICodec;
+import org.lndroid.framework.common.IResponseCallback;
+import org.lndroid.framework.common.ISigner;
+import org.lndroid.framework.common.IVerifier;
 import org.lndroid.framework.common.PluginData;
 import org.lndroid.framework.common.ICodecProvider;
 import org.lndroid.framework.common.PluginUtils;
@@ -35,14 +39,20 @@ class PluginClient extends Handler implements IPluginClient {
     private boolean ipc_;
     private ICodecProvider ipcCodecProvider_;
     private ICodec<PluginData.PluginMessage> ipcPluginMessageCodec_;
+    private ISigner signer_;
+    private IVerifier verifier_;
+    private IResponseCallback<WalletData.Error> onError_;
+
     private String servicePackageName_;
     private String serviceClassName_;
     private String servicePubkey_;
+
     private boolean bound_;
     private Map<String, Plugin> plugins_ = new HashMap<>();
+    private String sessionToken_;
 
     private ServiceConnection connection_;
-    private Queue<Pair<WeakReference<PluginTransaction>, Message>> queue_ = new LinkedList<>();
+    private Queue<Pair<WeakReference<PluginTransaction>, PluginData.PluginMessage>> queue_ = new LinkedList<>();
 
 
     class Plugin {
@@ -58,9 +68,9 @@ class PluginClient extends Handler implements IPluginClient {
 
         PluginTransaction createTransaction(String txId, IPluginTransactionCallback cb) {
             if (txId.isEmpty()) // FIXME use GUID?
-                txId = pluginId_ + "_"+new Long(System.currentTimeMillis()).toString();
+                txId = pluginId_ + "_"+System.currentTimeMillis();
 
-            PluginTransaction t = new PluginTransaction(pluginId_, userId_, txId, cb, client_);
+            PluginTransaction t = new PluginTransaction(pluginId_, txId, userId_, cb, client_);
             transactions_.put(txId, new WeakReference<PluginTransaction>(t));
 
             return t;
@@ -77,7 +87,10 @@ class PluginClient extends Handler implements IPluginClient {
         }
     }
 
-    public PluginClient(WalletData.UserIdentity userId, Messenger server, boolean ipc, ICodecProvider ipcCodecProvider,
+    public PluginClient(WalletData.UserIdentity userId, Messenger server, boolean ipc,
+                        ICodecProvider ipcCodecProvider,
+                        ISigner signer,
+                        IVerifier verifier,
                         String servicePackageName, String serviceClassName, String servicePubkey) {
         userId_ = userId;
         self_ = new Messenger(this);
@@ -85,6 +98,8 @@ class PluginClient extends Handler implements IPluginClient {
         ipc_ = ipc;
         ipcCodecProvider_ = ipcCodecProvider;
         ipcPluginMessageCodec_ = ipcCodecProvider_.get(PluginData.PluginMessage.class);
+        signer_ = signer;
+        verifier_ = verifier;
         servicePackageName_ = servicePackageName;
         serviceClassName_ = serviceClassName;
         servicePubkey_ = servicePubkey;
@@ -94,20 +109,34 @@ class PluginClient extends Handler implements IPluginClient {
         }
     }
 
+    @Override
+    public boolean haveSessionToken() {
+        // FIXME clear token if we get server error of 'bad token'
+        return sessionToken_ != null;
+    }
+
+    @Override
+    public void setSessionToken(String token) {
+        sessionToken_ = token;
+        sendQueuedMessages();
+    }
+
+    private boolean canSend() {
+        return (ipc_ && bound_)
+                || (!ipc_ && sessionToken_ != null);
+    }
+
     private void sendQueuedMessages() {
-        while(bound_) {
-            Pair<WeakReference<PluginTransaction>, Message> p = queue_.poll();
+        while(canSend()) {
+            Pair<WeakReference<PluginTransaction>, PluginData.PluginMessage> p = queue_.poll();
             if (p == null)
                 break;
 
             // tx might be already gone
             PluginTransaction tx = p.first.get();
             if (tx != null) {
-                final boolean ok = send(tx, p.second);
-                if (!ok) {
-                    tx.onIpcError();
+                if (!send(tx, p.second))
                     break;
-                }
             }
         }
     }
@@ -145,6 +174,11 @@ class PluginClient extends Handler implements IPluginClient {
         return p.createTransaction(txId, cb);
     }
 
+    @Override
+    public void setOnError(IResponseCallback<WalletData.Error> cb) {
+        onError_ = cb;
+    }
+
     public void releaseTransaction(IPluginTransaction tx) {
         Plugin p = plugins_.get(tx.pluginId());
         if (p == null)
@@ -153,11 +187,47 @@ class PluginClient extends Handler implements IPluginClient {
     }
 
     public void handlePluginMessage(PluginData.PluginMessage pm) {
-        Log.i(TAG, "received tx "+pm.txId()+" type "+pm.type()+" plugin "+pm.pluginId());
+        if (PluginData.MESSAGE_TYPE_ERROR.equals(pm.type()))
+            Log.e(TAG, "received error tx "+pm.txId()+" e "+pm.code()+" plugin "+pm.pluginId());
+        else
+            Log.i(TAG, "received tx "+pm.txId()+" type "+pm.type()+" plugin "+pm.pluginId());
+
+        if (PluginData.MESSAGE_TYPE_ERROR.equals(pm.type())) {
+
+            if (Errors.IPC_ERROR.equals(pm.code())) {
+                // FIXME reconnect!
+            }
+
+            if (Errors.IPC_IDENTITY_ERROR.equals(pm.code())
+                    || Errors.MESSAGE_AUTH.equals(pm.code())
+                    || Errors.DEVICE_LOCKED.equals(pm.code())
+            ) {
+                // notify UI:
+                //  - identity error should cause UI to restart connect-to-wallet flow
+                //  - message_auth error should force requesting a new token
+                //  - device_locked error should hint that subscribed read plugins need to restart
+                if (onError_ != null) {
+                    onError_.onResponse(WalletData.Error.builder()
+                        .setCode(pm.code())
+                        .setMessage(pm.error())
+                        .build());
+                }
+            }
+        }
 
         Plugin p = plugins_.get(pm.pluginId());
         PluginTransaction tx = p.getTransaction(pm.txId());
         if (tx != null) {
+
+            // reset client's session token if server said it's no longer valid
+            if (PluginData.MESSAGE_TYPE_ERROR.equals(pm.type())
+                    && Errors.MESSAGE_AUTH.equals(pm.code())
+                    && (tx.sessionToken() == null
+                        || tx.sessionToken().equals(sessionToken_)
+                    )
+                )
+                sessionToken_ = null;
+
             tx.handleMessage(pm);
         } else {
             Log.i(TAG, "message for unknown tx "+pm.txId()+" plugin "+pm.pluginId()+" dropped");
@@ -169,9 +239,31 @@ class PluginClient extends Handler implements IPluginClient {
     public void handleMessage(Message msg) {
         PluginData.PluginMessage pm = (PluginData.PluginMessage) msg.obj;
         if (ipc_) {
+
             pm = PluginUtils.decodePluginMessageIpc(msg.getData(), ipcPluginMessageCodec_);
             if (pm != null)
                 pm.assignCodecProvider(ipcCodecProvider_);
+
+            String code = PluginUtils.checkPluginMessageIpc(
+                    msg.getData(), servicePubkey_, verifier_);
+            if (code != null) {
+                Log.e(TAG, "bad server message "+code+" expected pubkey "+servicePubkey_);
+                if (pm != null) {
+                    Plugin p = plugins_.get(pm.pluginId());
+                    PluginTransaction tx = p.getTransaction(pm.txId());
+                    if (tx != null)
+                        tx.onIpcIdentityError();
+                }
+
+                if (onError_ != null) {
+                    onError_.onResponse(WalletData.Error.builder()
+                            .setCode(Errors.IPC_IDENTITY_ERROR)
+                            .setMessage(Errors.errorMessage(Errors.IPC_IDENTITY_ERROR))
+                            .build());
+                }
+
+                return;
+            }
         }
 
         if (pm != null)
@@ -192,34 +284,43 @@ class PluginClient extends Handler implements IPluginClient {
         }
     }
 
-    private void sendLocal(PluginTransaction tx, PluginData.PluginMessage msg) {
-        Message m = this.obtainMessage(PluginData.MESSAGE_WHAT_LOCAL_TX, msg);
-        send(tx, m);
-    }
+    private boolean sendLocal(PluginTransaction tx, PluginData.PluginMessage msg) {
+        if (msg.sessionToken() != null || sessionToken_ != null) {
+            if (msg.sessionToken() == null)
+                msg.assignSessionToken(sessionToken_);
 
-    private void sendIpc(PluginTransaction tx, PluginData.PluginMessage msg) {
-        Bundle b = PluginUtils.encodePluginMessageIpc(msg, ipcCodecProvider_, ipcPluginMessageCodec_);
-
-        // prepare message with the bundle
-        Message m = this.obtainMessage(PluginData.MESSAGE_WHAT_IPC_TX);
-        m.setData(b);
-
-        if (bound_) {
-            // send message over IPC
-            final boolean ok = send(tx, m);
-            if (!ok)
-                tx.onIpcError();
+            Message m = this.obtainMessage(PluginData.MESSAGE_WHAT_LOCAL_TX, msg);
+            send(tx, m);
+            return true;
         } else {
-            queue_.add(Pair.create(new WeakReference<>(tx), m));
+            queue_.add(Pair.create(new WeakReference<>(tx), msg));
+            return false;
         }
     }
 
-    public void send(PluginTransaction tx, PluginData.PluginMessage msg) {
+    private boolean sendIpc(PluginTransaction tx, PluginData.PluginMessage msg) {
+
+        if (bound_) {
+            Bundle b = PluginUtils.encodePluginMessageIpc(msg, ipcCodecProvider_, ipcPluginMessageCodec_, signer_);
+
+            // prepare message with the bundle
+            Message m = this.obtainMessage(PluginData.MESSAGE_WHAT_IPC_TX);
+            m.setData(b);
+
+            // send message over IPC
+            return send(tx, m);
+        } else {
+            queue_.add(Pair.create(new WeakReference<>(tx), msg));
+            return false;
+        }
+    }
+
+    public boolean send(PluginTransaction tx, PluginData.PluginMessage msg) {
         Log.i(TAG, "sending tx "+tx.id()+" type "+msg.type()+" plugin "+msg.pluginId());
         if (ipc_)
-            sendIpc(tx, msg);
+            return sendIpc(tx, msg);
         else
-            sendLocal(tx, msg);
+            return sendLocal(tx, msg);
     }
 
     @Override
@@ -230,5 +331,13 @@ class PluginClient extends Handler implements IPluginClient {
         final boolean ok = ctx.bindService(intent, connection_, Context.BIND_AUTO_CREATE);
         if (!ok)
             throw new RuntimeException("No permission to bind to wallet service, or service not found");
+    }
+
+    @Override
+    public void disconnect(Context ctx) {
+        if (connection_ != null)
+            ctx.unbindService(connection_);
+        connection_ = null;
+        bound_ = false;
     }
 }

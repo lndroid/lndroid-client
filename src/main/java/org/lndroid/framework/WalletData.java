@@ -13,6 +13,24 @@ import java.util.List;
 public final class WalletData {
 
     @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_Field.class)
+    public static abstract class Field implements WalletDataDecl.Field {
+
+        public static Builder builder() {
+            return new AutoValue_WalletData_Field.Builder();
+        }
+
+        public abstract Builder toBuilder();
+
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataDecl.Field,
+                WalletDataBuilders.IBuilder<Field>,
+                WalletDataBuilders.FieldBuilder<Builder> {
+        }
+    }
+
+    @AutoValue
     @AutoValueClass(className = AutoValue_WalletData_Error.class)
     public static abstract class Error implements WalletDataDecl.Error {
 
@@ -88,6 +106,7 @@ public final class WalletData {
         public byte[] aezeedPassphrase;
         public List<String> cipherSeedMnemonic;
         public byte[] walletPassword;
+        public byte[] multiChannelBackup;
     }
 
     public static class InitWalletResponse {
@@ -97,15 +116,8 @@ public final class WalletData {
     @AutoValueClass(className = AutoValue_WalletData_UserIdentity.class)
     public static abstract class UserIdentity implements WalletDataDecl.UserIdentity {
 
-        public final boolean isValid() {
-            return userId() != 0
-                    || (appPackageName() != null && !appPackageName().isEmpty()
-                    && appPubkey() != null && !appPubkey().isEmpty()
-            );
-        }
-
         public static UserIdentity create(
-                int userId,
+                long userId,
                 String appPackageName,
                 String appPubkey
         ) {
@@ -128,16 +140,6 @@ public final class WalletData {
                 WalletDataDecl.UserIdentity,
                 WalletDataBuilders.IBuilder<UserIdentity>,
                 WalletDataBuilders.UserIdentityBuilder<Builder> {
-
-            abstract UserIdentity autoBuild();
-
-            @Override
-            public UserIdentity build() {
-                UserIdentity ui = autoBuild();
-                if (!ui.isValid())
-                    throw new IllegalStateException("Bad user identity");
-                return ui;
-            }
         }
     }
 
@@ -146,8 +148,8 @@ public final class WalletData {
     public static abstract class AuthResponse implements WalletDataDecl.AuthResponse {
 
         public static AuthResponse create(
-                int authId,
-                int authUserId,
+                long authId,
+                long authUserId,
                 boolean authorized,
                 Object data
         ) {
@@ -178,11 +180,11 @@ public final class WalletData {
 
     @AutoValue
     @AutoValueClass(className = AutoValue_WalletData_AuthRequest.class)
-    public static abstract class AuthRequest implements WalletDataDecl.AuthRequest {
+    public static abstract class AuthRequest implements WalletDataDecl.EntityBase, WalletDataDecl.AuthRequest {
 
         public static AuthRequest create(
-                int id,
-                int userId,
+                long id,
+                long userId,
                 long createTime,
                 boolean background,
                 String pluginId,
@@ -216,6 +218,7 @@ public final class WalletData {
 
         @AutoValue.Builder
         public abstract static class Builder implements
+                WalletDataDecl.EntityBase,
                 WalletDataDecl.AuthRequest,
                 WalletDataBuilders.IBuilder<AuthRequest>,
                 WalletDataBuilders.AuthRequestBuilder<Builder> {
@@ -224,25 +227,22 @@ public final class WalletData {
 
     public static final int ROOT_USER_ID = 1;
 
+    public static final int MIN_PASSWORD_LEN = 4;
+
     public static final String USER_ROLE_ROOT = "root";
     public static final String USER_ROLE_USER = "user";
     public static final String USER_ROLE_APP = "app";
-    public static final String USER_ROLE_GUEST = "guest";
+    public static final String USER_ROLE_BG = "bg";
+
+    public static final String AUTH_TYPE_NONE = "none";
+    public static final String AUTH_TYPE_PASSWORD = "password";
+    public static final String AUTH_TYPE_SCREEN_LOCK = "screenLock";
+    public static final String AUTH_TYPE_DEVICE_SECURITY = "deviceSecurity";
+    public static final String AUTH_TYPE_BIO = "bio";
 
     @AutoValue
     @AutoValueClass(className = AutoValue_WalletData_User.class)
-    public static abstract class User implements WalletDataDecl.User {
-
-        public boolean isValid() {
-            return role() != null && !role().equals("")
-                    && pubkey() != null && !pubkey().equals("")
-                    && (!role().equals(USER_ROLE_APP)
-                    || (appPubkey() != null && !appPubkey().equals("")
-                    && appPackageName() != null && !appPackageName().equals("")
-                    && appLabel() != null && !appLabel().equals("")
-            )
-            );
-        }
+    public static abstract class User implements WalletDataDecl.EntityBase, WalletDataDecl.User {
 
         // some helpers
         public boolean isRoot() {
@@ -254,17 +254,27 @@ public final class WalletData {
         }
 
         public static User create(
-                int id, int authUserId, long createTime, String role, String pubkey, String appPubkey, String appPackageName, String appLabel) {
+                long id,
+                long authUserId,
+                long createTime,
+                String role,
+                String authType,
+                String pubkey,
+                String appPubkey,
+                String appPackageName,
+                String appLabel)
+        {
             return builder()
                     .setId(id)
                     .setAuthUserId(authUserId)
                     .setCreateTime(createTime)
                     .setRole(role)
+                    .setAuthType(authType)
                     .setPubkey(pubkey)
                     .setAppPubkey(appPubkey)
                     .setAppPackageName(appPackageName)
                     .setAppLabel(appLabel)
-                    .autoBuild();
+                    .build();
         }
 
         public static Builder builder() {
@@ -277,17 +287,12 @@ public final class WalletData {
         public abstract Builder toBuilder();
 
         @AutoValue.Builder
-        public abstract static class Builder
-                implements WalletDataBuilders.IBuilder<User>, WalletDataBuilders.UserBuilder<Builder> {
-            public abstract User autoBuild();
-
-            @Override
-            public User build() {
-                User u = autoBuild();
-                if (!u.isValid())
-                    throw new IllegalArgumentException("Bad user");
-                return u;
-            }
+        public abstract static class Builder implements
+                WalletDataDecl.EntityBase,
+                WalletDataDecl.User,
+                WalletDataBuilders.IBuilder<User>,
+                WalletDataBuilders.UserBuilder<Builder>
+        {
         }
     }
 
@@ -298,19 +303,25 @@ public final class WalletData {
         public final boolean isValid() {
             return role() != null && !role().equals("")
                     && (!role().equals(USER_ROLE_APP)
-                    || (appPubkey() != null && !appPubkey().equals("")
-                    && appPackageName() != null && !appPackageName().equals("")
-                    && appLabel() != null && !appLabel().equals("")
-            )
-            );
+                        || (appPubkey() != null && !appPubkey().equals("")
+                            && appPackageName() != null && !appPackageName().equals("")
+                            && appLabel() != null && !appLabel().equals("")
+                        )
+                    );
         }
 
-        // Room uses this factory method to create objects, as it looks like
-        // it doesn't support auto value builders.
         public static AddUserRequest create(
-                String role, String appPubkey, String appPackageName, String appLabel) {
+                String role,
+                String authType,
+                String password,
+                String appPubkey,
+                String appPackageName,
+                String appLabel)
+        {
             return builder()
                     .setRole(role)
+                    .setAuthType(authType)
+                    .setPassword(password)
                     .setAppPubkey(appPubkey)
                     .setAppPackageName(appPackageName)
                     .setAppLabel(appLabel)
@@ -324,8 +335,10 @@ public final class WalletData {
         public abstract Builder toBuilder();
 
         @AutoValue.Builder
-        public abstract static class Builder
-                implements WalletDataBuilders.IBuilder<AddUserRequest>, WalletDataBuilders.AddUserRequestBuilder<Builder> {
+        public abstract static class Builder implements
+                WalletDataDecl.AddUserRequest,
+                WalletDataBuilders.IBuilder<AddUserRequest>,
+                WalletDataBuilders.AddUserRequestBuilder<Builder> {
             public abstract AddUserRequest autoBuild();
 
             @Override
@@ -798,8 +811,8 @@ public final class WalletData {
         public static Invoice create(
                 long id,
                 String txId,
-                int userId,
-                int authUserId,
+                long userId,
+                long authUserId,
                 String purpose,
                 String description,
                 String preimageHex,
@@ -1005,19 +1018,14 @@ public final class WalletData {
         }
     }
 
-    // 0 - new, 1 - open, 2 - failed, 3 - opening, 4 - rejected by user, 5 - pending (unconfirmed), 6 - Lost, 7 - Retry
     public static final int CHANNEL_STATE_NEW = 0;
     public static final int CHANNEL_STATE_OPEN = 1;
     public static final int CHANNEL_STATE_CLOSED = 2;
     public static final int CHANNEL_STATE_FAILED = 3; // open failed
-    public static final int CHANNEL_STATE_OPENING = 4; // maybe sent OpenChannel to lnd, waiting for reply
-    public static final int CHANNEL_STATE_REJECTED = 5;
-    public static final int CHANNEL_STATE_PENDING_OPEN = 6; // opened, waiting tx confs
-    public static final int CHANNEL_STATE_LOST = 7; // OpenWorker was interrupted and needs StateWorker to sync
-    public static final int CHANNEL_STATE_RETRY = 8; // StateWorker didn't find LOST channel, OpenWorker should retry
-    public static final int CHANNEL_STATE_PENDING_CLOSE = 9; // closing
-    public static final int CHANNEL_STATE_PENDING_FORCE_CLOSE = 10; // force closing
-    public static final int CHANNEL_STATE_WAITING_CLOSE = 11; // waiting for close tx confs
+    public static final int CHANNEL_STATE_PENDING_OPEN = 4; // opened, waiting tx confs
+    public static final int CHANNEL_STATE_PENDING_CLOSE = 5; // closing
+    public static final int CHANNEL_STATE_PENDING_FORCE_CLOSE = 6; // force closing
+    public static final int CHANNEL_STATE_WAITING_CLOSE = 7; // waiting for close tx confs
 
     @AutoValue
     @AutoValueClass(className = AutoValue_WalletData_Channel.class)
@@ -1025,9 +1033,9 @@ public final class WalletData {
 
         public static Channel create(
                 long id,
-                int userId,
+                long userId,
                 String txId,
-                int authUserId,
+                long authUserId,
                 String description,
                 int targetConf,
                 long satPerByte,
@@ -1040,11 +1048,6 @@ public final class WalletData {
                 long settledBalance,
                 long timeLockedBalance,
                 int closeType,
-                int tries,
-                int maxTries,
-                long maxTryTime,
-                long lastTryTime,
-                long nextTryTime,
                 int state,
                 String errorCode,
                 String errorMessage,
@@ -1058,6 +1061,10 @@ public final class WalletData {
                 long capacity,
                 long localBalance,
                 long remoteBalance,
+                int confirmationHeight,
+                long limboBalance,
+                int maturityHeight,
+                long recoveredBalance,
                 long commitFee,
                 long commitWeight,
                 long feePerKw,
@@ -1092,11 +1099,6 @@ public final class WalletData {
                     .setSettledBalance(settledBalance)
                     .setTimeLockedBalance(timeLockedBalance)
                     .setCloseType(closeType)
-                    .setTries(tries)
-                    .setMaxTries(maxTries)
-                    .setMaxTryTime(maxTryTime)
-                    .setLastTryTime(lastTryTime)
-                    .setNextTryTime(nextTryTime)
                     .setState(state)
                     .setErrorCode(errorCode)
                     .setErrorMessage(errorMessage)
@@ -1110,6 +1112,10 @@ public final class WalletData {
                     .setCapacity(capacity)
                     .setLocalBalance(localBalance)
                     .setRemoteBalance(remoteBalance)
+                    .setConfirmationHeight(confirmationHeight)
+                    .setLimboBalance(limboBalance)
+                    .setMaturityHeight(maturityHeight)
+                    .setRecoveredBalance(recoveredBalance)
                     .setCommitFee(commitFee)
                     .setCommitWeight(commitWeight)
                     .setFeePerKw(feePerKw)
@@ -1143,11 +1149,6 @@ public final class WalletData {
                     .setSettledBalance(0)
                     .setTimeLockedBalance(0)
                     .setCloseType(0)
-                    .setTries(0)
-                    .setMaxTries(0)
-                    .setMaxTryTime(0)
-                    .setLastTryTime(0)
-                    .setNextTryTime(0)
                     .setState(0)
                     .setCreateTime(0)
                     .setOpenTime(0)
@@ -1157,6 +1158,10 @@ public final class WalletData {
                     .setCapacity(0)
                     .setLocalBalance(0)
                     .setRemoteBalance(0)
+                    .setConfirmationHeight(0)
+                    .setLimboBalance(0)
+                    .setMaturityHeight(0)
+                    .setRecoveredBalance(0)
                     .setCommitFee(0)
                     .setCommitWeight(0)
                     .setFeePerKw(0)
@@ -1242,35 +1247,41 @@ public final class WalletData {
         }
     }
 
-    public static final class OnChainTransaction {
-        // primary key
-        /// The transaction hash
-        public String txHash;
+    @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_CloseChannelRequest.class)
+    public static abstract class CloseChannelRequest implements WalletDataDecl.CloseChannelRequest {
 
-        /// The transaction amount, denominated in satoshis
-        public long amount;
+        public static CloseChannelRequest create(
+                long channelId,
+                boolean force,
+                int targetConf,
+                long satPerByte
+        ) {
+            return builder()
+                    .setChannelId(channelId)
+                    .setForce(force)
+                    .setTargetConf(targetConf)
+                    .setSatPerByte(satPerByte)
+                    .build();
+        }
 
-        /// The number of confirmations
-        public int numConfirmations;
+        public static Builder builder() {
+            return new AutoValue_WalletData_CloseChannelRequest.Builder()
+                    .setChannelId(0)
+                    .setForce(false)
+                    .setTargetConf(0)
+                    .setSatPerByte(0)
+                    ;
+        }
 
-        /// The hash of the block this transaction was included in
-        public String blockHash;
+        public abstract Builder toBuilder();
 
-        /// The height of the block this transaction was included in
-        public int blockHeight;
-
-        /// Timestamp of this transaction
-        public long timeStamp;
-
-        /// Fees paid for this transaction
-        public long totalFees;
-
-        // will be serialized to db using a type-converter
-        /// Addresses that received funds for this transaction
-        public List<String> destAddresses;
-
-        /// The raw transaction hex.
-        public String rawTxHex;
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataDecl.CloseChannelRequest,
+                WalletDataBuilders.IBuilder<CloseChannelRequest>,
+                WalletDataBuilders.CloseChannelRequestBuilder<Builder> {
+        }
     }
 
     @AutoValue
@@ -1534,7 +1545,7 @@ public final class WalletData {
                 ImmutableMap<Long, HTLCAttempt> HTLCAttempts,
                 ImmutableMap<Long, Invoice> invoices,
                 ImmutableMap<Long, InvoiceHTLC> invoiceHTLCs,
-                int userId,
+                long userId,
                 long time,
                 String peerPubkey,
                 String message
@@ -1579,7 +1590,6 @@ public final class WalletData {
     public static final int SEND_PAYMENT_STATE_PENDING = 0;
     public static final int SEND_PAYMENT_STATE_OK = 1;
     public static final int SEND_PAYMENT_STATE_FAILED = 2;
-    public static final int SEND_PAYMENT_STATE_SENDING = 3;
 
     @AutoValue
     @AutoValueClass(className = AutoValue_WalletData_SendPayment.class)
@@ -1589,14 +1599,9 @@ public final class WalletData {
         public static SendPayment create(
                 long id,
                 String txId,
-                int userId,
-                int authUserId,
+                long userId,
+                long authUserId,
                 String purpose,
-                int tries,
-                int maxTries,
-                long maxTryTime,
-                long lastTryTime,
-                long nextTryTime,
                 int state,
                 String errorCode,
                 String errorMessage,
@@ -1635,11 +1640,6 @@ public final class WalletData {
                     .setUserId(userId)
                     .setAuthUserId(authUserId)
                     .setPurpose(purpose)
-                    .setTries(tries)
-                    .setMaxTries(maxTries)
-                    .setMaxTryTime(maxTryTime)
-                    .setLastTryTime(lastTryTime)
-                    .setNextTryTime(nextTryTime)
                     .setState(state)
                     .setErrorCode(errorCode)
                     .setErrorMessage(errorMessage)
@@ -1678,11 +1678,6 @@ public final class WalletData {
                     .setId(0)
                     .setUserId(0)
                     .setAuthUserId(0)
-                    .setTries(0)
-                    .setMaxTries(0)
-                    .setMaxTryTime(0)
-                    .setLastTryTime(0)
-                    .setNextTryTime(0)
                     .setState(SEND_PAYMENT_STATE_PENDING)
                     .setInvoiceTimestamp(0)
                     .setInvoiceExpiry(0)
@@ -1731,8 +1726,8 @@ public final class WalletData {
 
         public static Contact create(
                 long id,
-                int userId,
-                int authUserId,
+                long userId,
+                long authUserId,
                 long createTime,
                 String pubkey,
                 String name,
@@ -1899,8 +1894,8 @@ public final class WalletData {
 
         public static ListContactsPrivilege create(
                 long id,
-                int userId,
-                int authUserId,
+                long userId,
+                long authUserId,
                 long createTime
         ) {
             return builder()
@@ -1937,8 +1932,8 @@ public final class WalletData {
 
         public static ContactPaymentsPrivilege create(
                 long id,
-                int userId,
-                int authUserId,
+                long userId,
+                long authUserId,
                 long createTime,
                 long contactId
         ) {
@@ -1978,12 +1973,12 @@ public final class WalletData {
 
         public static ConnectPeerRequest create(
                 String pubkey,
-                String host,
+                String address,
                 boolean perm
         ) {
             return builder()
                     .setPubkey(pubkey)
-                    .setHost(host)
+                    .setAddress(address)
                     .setPerm(perm)
                     .build();
         }
@@ -2004,23 +1999,112 @@ public final class WalletData {
     }
 
     @AutoValue
-    @AutoValueClass(className = AutoValue_WalletData_ConnectPeerResponse.class)
-    public static abstract class ConnectPeerResponse {
+    @AutoValueClass(className = AutoValue_WalletData_DisconnectPeerRequest.class)
+    public static abstract class DisconnectPeerRequest
+            implements WalletDataDecl.DisconnectPeerRequest {
 
-        public static ConnectPeerResponse create() {
+        public static DisconnectPeerRequest create(
+                long id,
+                long contactId,
+                String pubkey
+        ) {
             return builder()
+                    .setId(id)
+                    .setContactId(contactId)
+                    .setPubkey(pubkey)
                     .build();
         }
 
         public static Builder builder() {
-            return new AutoValue_WalletData_ConnectPeerResponse.Builder();
+            return new AutoValue_WalletData_DisconnectPeerRequest.Builder()
+                    .setId(0)
+                    .setContactId(0)
+                    ;
         }
 
         public abstract Builder toBuilder();
 
         @AutoValue.Builder
         public abstract static class Builder implements
-                WalletDataBuilders.IBuilder<ConnectPeerResponse> {
+                WalletDataDecl.DisconnectPeerRequest,
+                WalletDataBuilders.IBuilder<DisconnectPeerRequest>,
+                WalletDataBuilders.DisconnectPeerRequestBuilder<Builder> {
+        }
+    }
+
+    public static final int PEER_SYNC_TYPE_UNKNOWN = 0;
+    public static final int PEER_SYNC_TYPE_ACTIVE = 1; // getting graph updates
+    public static final int PEER_SYNC_TYPE_PASSIVE = 2; // not getting graph updates
+
+    @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_Peer.class)
+    public static abstract class Peer
+            implements WalletDataDecl.EntityBase, WalletDataDecl.Peer {
+
+        public static Peer create(
+                long id,
+                String pubkey,
+                String address,
+                long bytesSent,
+                long bytesRecv,
+                long satsSent,
+                long satsRecv,
+                boolean inbound,
+                long pingTime,
+                int syncType,
+                ImmutableList<Integer> features,
+                boolean perm,
+                boolean online,
+                boolean disabled,
+                long lastConnectTime,
+                long lastDisconnectTime
+        ) {
+            return builder()
+                    .setId(id)
+                    .setPubkey(pubkey)
+                    .setAddress(address)
+                    .setBytesSent(bytesSent)
+                    .setBytesRecv(bytesRecv)
+                    .setSatsSent(satsSent)
+                    .setSatsRecv(satsRecv)
+                    .setInbound(inbound)
+                    .setPingTime(pingTime)
+                    .setSyncType(syncType)
+                    .setFeatures(features)
+                    .setPerm(perm)
+                    .setOnline(online)
+                    .setDisabled(disabled)
+                    .setLastConnectTime(lastConnectTime)
+                    .setLastDisconnectTime(lastDisconnectTime)
+                    .build();
+        }
+
+        public static Builder builder() {
+            return new AutoValue_WalletData_Peer.Builder()
+                    .setId(0)
+                    .setBytesSent(0)
+                    .setBytesRecv(0)
+                    .setSatsSent(0)
+                    .setSatsRecv(0)
+                    .setInbound(false)
+                    .setPingTime(0)
+                    .setSyncType(0)
+                    .setPerm(false)
+                    .setOnline(false)
+                    .setDisabled(false)
+                    .setLastConnectTime(0)
+                    .setLastDisconnectTime(0)
+                    ;
+        }
+
+        public abstract Builder toBuilder();
+
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataDecl.EntityBase,
+                WalletDataDecl.Peer,
+                WalletDataBuilders.IBuilder<Peer>,
+                WalletDataBuilders.PeerBuilder<Builder> {
         }
     }
 
@@ -2258,6 +2342,563 @@ public final class WalletData {
                 WalletDataBuilders.IBuilder<LightningNode>,
                 WalletDataBuilders.LightningNodeBuilder<Builder>
         {
+        }
+    }
+
+    @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_SendCoinsRequest.class)
+    public static abstract class SendCoinsRequest
+            implements WalletDataDecl.SendCoinsRequest {
+
+        public static SendCoinsRequest create(
+                String purpose,
+                int maxTries,
+                long maxTryTime,
+                ImmutableMap<String, Long> addrToAmount,
+                int targetConf,
+                long satPerByte,
+                boolean sendAll
+        ) {
+            return builder()
+                    .setPurpose(purpose)
+                    .setMaxTries(maxTries)
+                    .setMaxTryTime(maxTryTime)
+                    .setAddrToAmount(addrToAmount)
+                    .setTargetConf(targetConf)
+                    .setSatPerByte(satPerByte)
+                    .setSendAll(sendAll)
+                    .build();
+        }
+
+        public static Builder builder() {
+            return new AutoValue_WalletData_SendCoinsRequest.Builder()
+                    .setMaxTries(0)
+                    .setMaxTryTime(0)
+                    .setTargetConf(0)
+                    .setSatPerByte(0)
+                    .setSendAll(false)
+                    ;
+        }
+
+        public abstract Builder toBuilder();
+
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataDecl.SendCoinsRequest,
+                WalletDataBuilders.IBuilder<SendCoinsRequest>,
+                WalletDataBuilders.SendCoinsRequestBuilder<Builder>
+        {
+        }
+    }
+
+    public static final int TRANSACTION_STATE_NEW = 0;
+    public static final int TRANSACTION_STATE_SENT = 1;
+    public static final int TRANSACTION_STATE_FAILED = 2;
+
+    @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_Transaction.class)
+    public static abstract class Transaction
+            implements WalletDataDecl.EntityBase, WalletDataDecl.Transaction {
+
+        public static Transaction create(
+                long id,
+                String txId,
+                long userId,
+                long authUserId,
+                long createTime,
+                long sendTime,
+                String purpose,
+                int state,
+                String errorCode,
+                String errorMessage,
+                ImmutableMap<String, Long> addrToAmount,
+                int targetConf,
+                long satPerByte,
+                boolean sendAll,
+                String txHash,
+                long amount,
+                int numConfirmations,
+                String blockHash,
+                int blockHeight,
+                long timestamp,
+                long totalFees,
+                ImmutableList<String> destAddresses,
+                String rawTxHex
+        ) {
+            return builder()
+                    .setId(id)
+                    .setTxId(txId)
+                    .setUserId(userId)
+                    .setAuthUserId(authUserId)
+                    .setCreateTime(createTime)
+                    .setSendTime(sendTime)
+                    .setPurpose(purpose)
+                    .setState(state)
+                    .setErrorCode(errorCode)
+                    .setErrorMessage(errorMessage)
+                    .setAddrToAmount(addrToAmount)
+                    .setTargetConf(targetConf)
+                    .setSatPerByte(satPerByte)
+                    .setSendAll(sendAll)
+                    .setTxHash(txHash)
+                    .setAmount(amount)
+                    .setNumConfirmations(numConfirmations)
+                    .setBlockHash(blockHash)
+                    .setBlockHeight(blockHeight)
+                    .setTimestamp(timestamp)
+                    .setTotalFees(totalFees)
+                    .setDestAddresses(destAddresses)
+                    .setRawTxHex(rawTxHex)
+                    .build();
+        }
+
+        public static Builder builder() {
+            return new AutoValue_WalletData_Transaction.Builder()
+                    .setId(0)
+                    .setUserId(0)
+                    .setAuthUserId(0)
+                    .setCreateTime(0)
+                    .setSendTime(0)
+                    .setState(TRANSACTION_STATE_NEW)
+                    .setTargetConf(0)
+                    .setSatPerByte(0)
+                    .setSendAll(false)
+                    .setAmount(0)
+                    .setNumConfirmations(0)
+                    .setBlockHeight(0)
+                    .setTimestamp(0)
+                    .setTotalFees(0)
+                    ;
+        }
+
+        public abstract Builder toBuilder();
+
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataDecl.EntityBase,
+                WalletDataDecl.Transaction,
+                WalletDataBuilders.IBuilder<Transaction>,
+                WalletDataBuilders.TransactionBuilder<Builder>
+        {
+        }
+    }
+
+    @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_ListTransactionsResult.class)
+    public static abstract class ListTransactionsResult implements WalletDataDecl.ListResultTmpl<Transaction> {
+
+        public static ListTransactionsResult create(
+                ImmutableList<Transaction> items,
+                int count,
+                int position
+        ) {
+            return builder()
+                    .setItems(items)
+                    .setCount(count)
+                    .setPosition(position)
+                    .build();
+        }
+
+        public static Builder builder() {
+            return new AutoValue_WalletData_ListTransactionsResult.Builder()
+                    .setCount(0)
+                    .setPosition(0);
+        }
+
+        public abstract Builder toBuilder();
+
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataDecl.ListResultTmpl<Transaction>,
+                WalletDataBuilders.IBuilder<ListTransactionsResult>,
+                WalletDataBuilders.ListResultTmplBuilder<Transaction, Builder> {
+        }
+    }
+
+    @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_ListTransactionsRequest.class)
+    public static abstract class ListTransactionsRequest extends ListRequestBase implements WalletDataDecl.ListTransactionsRequest {
+
+        // FIXME add static factory method
+
+        public static Builder builder() {
+            return new AutoValue_WalletData_ListTransactionsRequest.Builder()
+                    .setUserId(0)
+                    .setTimeFrom(0)
+                    .setTimeTill(0)
+                    .setSortDesc(false)
+                    .setOnlyOwn(false)
+                    .setNoAuth(false)
+                    .setEnablePaging(false);
+        }
+
+        public abstract Builder toBuilder();
+
+        public ListTransactionsRequest withPage(ListPage page) {
+            return toBuilder().setPage(page).build();
+        }
+
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataDecl.ListTransactionsRequest,
+                WalletDataBuilders.IBuilder<ListTransactionsRequest>,
+                WalletDataBuilders.ListTransactionsRequestBuilder<Builder> {
+            public abstract Builder setPage(ListPage page);
+        }
+    }
+
+    @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_EstimateFeeRequest.class)
+    public static abstract class EstimateFeeRequest implements WalletDataDecl.EstimateFeeRequest {
+
+        public static EstimateFeeRequest create(
+                ImmutableMap<String, Long> addrToAmount,
+                int targetConf
+        ) {
+            return builder()
+                    .setAddrToAmount(addrToAmount)
+                    .setTargetConf(targetConf)
+                    .build();
+        }
+
+        public static Builder builder() {
+            return new AutoValue_WalletData_EstimateFeeRequest.Builder()
+                    .setTargetConf(0);
+        }
+
+        public abstract Builder toBuilder();
+
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataBuilders.IBuilder<EstimateFeeRequest>,
+                WalletDataBuilders.EstimateFeeRequestBuilder<Builder> {
+        }
+    }
+
+
+    @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_EstimateFeeResponse.class)
+    public static abstract class EstimateFeeResponse implements WalletDataDecl.EstimateFeeResponse {
+
+        public static EstimateFeeResponse create(
+                long feeSat,
+                long feerateSatPerByte
+        ) {
+            return builder()
+                    .setFeeSat(feeSat)
+                    .setFeerateSatPerByte(feerateSatPerByte)
+                    .build();
+        }
+
+        public static Builder builder() {
+            return new AutoValue_WalletData_EstimateFeeResponse.Builder()
+                    .setFeeSat(0)
+                    .setFeerateSatPerByte(0)
+                    ;
+        }
+
+        public abstract Builder toBuilder();
+
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataBuilders.IBuilder<EstimateFeeResponse>,
+                WalletDataBuilders.EstimateFeeResponseBuilder<Builder> {
+        }
+    }
+
+    @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_Utxo.class)
+    public static abstract class Utxo
+            implements WalletDataDecl.EntityBase, WalletDataDecl.Utxo {
+
+        public static Utxo create(
+                long id,
+                int type,
+                String address,
+                long amountSat,
+                String pkScript,
+                String txidHex,
+                int outputIndex,
+                long confirmations
+        ) {
+            return builder()
+                    .setId(id)
+                    .setType(type)
+                    .setAddress(address)
+                    .setAmountSat(amountSat)
+                    .setPkScript(pkScript)
+                    .setTxidHex(txidHex)
+                    .setOutputIndex(outputIndex)
+                    .setConfirmations(confirmations)
+                    .build();
+        }
+
+        public static Builder builder() {
+            return new AutoValue_WalletData_Utxo.Builder()
+                    .setId(0)
+                    .setType(0)
+                    .setAmountSat(0)
+                    .setOutputIndex(0)
+                    .setConfirmations(0)
+                    ;
+        }
+
+        public abstract Builder toBuilder();
+
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataDecl.EntityBase,
+                WalletDataDecl.Utxo,
+                WalletDataBuilders.IBuilder<Utxo>,
+                WalletDataBuilders.UtxoBuilder<Builder>
+        {
+        }
+    }
+
+    @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_ListUtxoRequest.class)
+    public static abstract class ListUtxoRequest extends ListRequestBase implements WalletDataDecl.ListUtxoRequest {
+
+        public static Builder builder() {
+            return new AutoValue_WalletData_ListUtxoRequest.Builder()
+                    .setMinConfirmations(0)
+                    .setMaxConfirmations(0)
+                    .setSortDesc(false)
+                    .setOnlyOwn(false)
+                    .setNoAuth(false)
+                    .setEnablePaging(false);
+        }
+
+        public abstract Builder toBuilder();
+
+        public ListUtxoRequest withPage(ListPage page) {
+            return toBuilder().setPage(page).build();
+        }
+
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataDecl.ListUtxoRequest,
+                WalletDataBuilders.IBuilder<ListUtxoRequest>,
+                WalletDataBuilders.ListUtxoRequestBuilder<Builder> {
+            public abstract Builder setPage(ListPage page);
+        }
+    }
+
+    @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_ListUtxoResult.class)
+    public static abstract class ListUtxoResult implements WalletDataDecl.ListResultTmpl<Utxo> {
+
+        public static ListUtxoResult create(
+                ImmutableList<Utxo> items,
+                int count,
+                int position
+        ) {
+            return builder()
+                    .setItems(items)
+                    .setCount(count)
+                    .setPosition(position)
+                    .build();
+        }
+
+        public static Builder builder() {
+            return new AutoValue_WalletData_ListUtxoResult.Builder()
+                    .setCount(0)
+                    .setPosition(0);
+        }
+
+        public abstract Builder toBuilder();
+
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataDecl.ListResultTmpl<Utxo>,
+                WalletDataBuilders.IBuilder<ListUtxoResult>,
+                WalletDataBuilders.ListResultTmplBuilder<Utxo, Builder> {
+        }
+    }
+
+    @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_ListChannelsRequest.class)
+    public static abstract class ListChannelsRequest extends ListRequestBase implements WalletDataDecl.ListChannelsRequest {
+
+        public static Builder builder() {
+            return new AutoValue_WalletData_ListChannelsRequest.Builder()
+                    .setUserId(0)
+                    .setSortDesc(false)
+                    .setOnlyOwn(false)
+                    .setNoAuth(false)
+                    .setEnablePaging(false);
+        }
+
+        public abstract Builder toBuilder();
+
+        public ListChannelsRequest withPage(ListPage page) {
+            return toBuilder().setPage(page).build();
+        }
+
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataDecl.ListChannelsRequest,
+                WalletDataBuilders.IBuilder<ListChannelsRequest>,
+                WalletDataBuilders.ListChannelsRequestBuilder<Builder> {
+            public abstract Builder setPage(ListPage page);
+        }
+    }
+
+    @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_ListChannelsResult.class)
+    public static abstract class ListChannelsResult implements WalletDataDecl.ListResultTmpl<Channel> {
+
+        public static ListChannelsResult create(
+                ImmutableList<Channel> items,
+                int count,
+                int position
+        ) {
+            return builder()
+                    .setItems(items)
+                    .setCount(count)
+                    .setPosition(position)
+                    .build();
+        }
+
+        public static Builder builder() {
+            return new AutoValue_WalletData_ListChannelsResult.Builder()
+                    .setCount(0)
+                    .setPosition(0);
+        }
+
+        public abstract Builder toBuilder();
+
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataDecl.ListResultTmpl<Channel>,
+                WalletDataBuilders.IBuilder<ListChannelsResult>,
+                WalletDataBuilders.ListResultTmplBuilder<Channel, Builder> {
+        }
+    }
+
+    @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_ListPeersResult.class)
+    public static abstract class ListPeersResult implements WalletDataDecl.ListResultTmpl<Peer> {
+
+        public static ListPeersResult create(
+                ImmutableList<Peer> items,
+                int count,
+                int position
+        ) {
+            return builder()
+                    .setItems(items)
+                    .setCount(count)
+                    .setPosition(position)
+                    .build();
+        }
+
+        public static Builder builder() {
+            return new AutoValue_WalletData_ListPeersResult.Builder()
+                    .setCount(0)
+                    .setPosition(0);
+        }
+
+        public abstract Builder toBuilder();
+
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataDecl.ListResultTmpl<Peer>,
+                WalletDataBuilders.IBuilder<ListPeersResult>,
+                WalletDataBuilders.ListResultTmplBuilder<Peer, Builder> {
+        }
+    }
+
+    @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_ListPeersRequest.class)
+    public static abstract class ListPeersRequest extends ListRequestBase
+            implements WalletDataDecl.ListPeersRequest {
+
+        public static Builder builder() {
+            return new AutoValue_WalletData_ListPeersRequest.Builder()
+                    .setAuthUserId(0)
+                    .setOnlyOwn(false)
+                    .setNoAuth(false)
+                    .setEnablePaging(false)
+                    .setSortDesc(false)
+                    ;
+        }
+
+        public abstract Builder toBuilder();
+
+        @Override
+        public ListPeersRequest withPage(ListPage page) {
+            return toBuilder().setPage(page).build();
+        }
+
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataDecl.ListPeersRequest,
+                WalletDataBuilders.IBuilder<ListPeersRequest>,
+                WalletDataBuilders.ListPeersRequestBuilder<Builder> {
+            public abstract Builder setPage(ListPage page);
+        }
+    }
+
+
+    @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_ListPeersRequest.class)
+    public static abstract class ListUsersRequest extends ListRequestBase
+            implements WalletDataDecl.ListUsersRequest {
+
+        public static Builder builder() {
+            return new AutoValue_WalletData_ListUsersRequest.Builder()
+                    .setOnlyOwn(false)
+                    .setNoAuth(false)
+                    .setEnablePaging(false)
+                    .setSortDesc(false)
+                    ;
+        }
+
+        public abstract Builder toBuilder();
+
+        @Override
+        public ListUsersRequest withPage(ListPage page) {
+            return toBuilder().setPage(page).build();
+        }
+
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataDecl.ListUsersRequest,
+                WalletDataBuilders.IBuilder<ListUsersRequest>,
+                WalletDataBuilders.ListUsersRequestBuilder<Builder> {
+            public abstract Builder setPage(ListPage page);
+        }
+    }
+
+    @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_ListUsersResult.class)
+    public static abstract class ListUsersResult implements WalletDataDecl.ListResultTmpl<User> {
+
+        public static ListUsersResult create(
+                ImmutableList<User> items,
+                int count,
+                int position
+        ) {
+            return builder()
+                    .setItems(items)
+                    .setCount(count)
+                    .setPosition(position)
+                    .build();
+        }
+
+        public static Builder builder() {
+            return new AutoValue_WalletData_ListUsersResult.Builder()
+                    .setCount(0)
+                    .setPosition(0);
+        }
+
+        public abstract Builder toBuilder();
+
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataDecl.ListResultTmpl<User>,
+                WalletDataBuilders.IBuilder<ListUsersResult>,
+                WalletDataBuilders.ListResultTmplBuilder<User, Builder> {
         }
     }
 

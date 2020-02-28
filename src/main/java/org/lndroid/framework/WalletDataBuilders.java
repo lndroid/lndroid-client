@@ -9,6 +9,14 @@ public class WalletDataBuilders {
         T build();
     }
 
+
+    interface FieldBuilder<Builder> {
+        Builder setId(String id);
+        Builder setName(String name);
+        Builder setValue(String value);
+        Builder setHelp(String help);
+    }
+
     interface ErrorBuilder<Builder> {
         Builder setCode(String code);
 
@@ -24,7 +32,7 @@ public class WalletDataBuilders {
     }
 
     interface UserIdentityBuilder<Builder> {
-        Builder setUserId(int id);
+        Builder setUserId(long id);
 
         Builder setAppPackageName(String packageName);
 
@@ -32,13 +40,15 @@ public class WalletDataBuilders {
     }
 
     interface UserBuilder<Builder> {
-        Builder setId(int id);
+        Builder setId(long id);
 
-        Builder setAuthUserId(int authUserId);
+        Builder setAuthUserId(long authUserId);
 
         Builder setCreateTime(long createTime);
 
         Builder setRole(String role);
+
+        Builder setAuthType(String authType);
 
         Builder setPubkey(String pubkey);
 
@@ -50,15 +60,15 @@ public class WalletDataBuilders {
     }
 
     interface AuthResponseBuilder<Builder> {
-        Builder setAuthId(int authId);
-        Builder setAuthUserId(int authUserId);
+        Builder setAuthId(long authId);
+        Builder setAuthUserId(long authUserId);
         Builder setAuthorized(boolean authorized);
         Builder setData(Object data);
     }
 
     interface AuthRequestBuilder<Builder> {
-        Builder setId(int id);
-        Builder setUserId(int userId);
+        Builder setId(long id);
+        Builder setUserId(long userId);
         Builder setCreateTime(long createTime);
         Builder setBackground(boolean background);
         Builder setPluginId(String pluginId);
@@ -70,6 +80,10 @@ public class WalletDataBuilders {
 
     interface AddUserRequestBuilder<Builder> {
         Builder setRole(String role);
+
+        Builder setAuthType(String authType);
+
+        Builder setPassword(String password);
 
         Builder setAppPubkey(String appPubkey);
 
@@ -100,8 +114,8 @@ public class WalletDataBuilders {
 
     interface ContactBuilder<RouteHint, Builder> {
         Builder setId(long id);
-        Builder setUserId(int userId);
-        Builder setAuthUserId(int authUserId);
+        Builder setUserId(long userId);
+        Builder setAuthUserId(long authUserId);
         Builder setCreateTime(long createTime);
 
         Builder setPubkey(String pubkey);
@@ -137,12 +151,12 @@ public class WalletDataBuilders {
         Builder setNoAuth(boolean noAuth);
         Builder setEnablePaging(boolean enablePaging);
 
-        Builder setUserId(int userId);
+        Builder setUserId(long userId);
         Builder setInvoiceId(long invoiceId);
         Builder setTxId(String txId);
         Builder setPreimageHex(String preimageHex);
         Builder setPreimageHashHex(String preimageHashHex);
-        Builder setAuthUserId(int authUserId);
+        Builder setAuthUserId(long authUserId);
         Builder setCreateFrom(long createFrom);
         Builder setCreateTill(long createTill);
         Builder setSettleFrom(long settleFrom);
@@ -159,7 +173,7 @@ public class WalletDataBuilders {
         Builder setNoAuth(boolean noAuth);
         Builder setEnablePaging(boolean enablePaging);
 
-        Builder setUserId(int userId);
+        Builder setUserId(long userId);
         Builder setType(int type);
         Builder setContactId(long contactId);
         Builder setSourceId(long sourceId);
@@ -176,7 +190,7 @@ public class WalletDataBuilders {
         Builder setNoAuth(boolean noAuth);
         Builder setEnablePaging(boolean enablePaging);
 
-        Builder setUserId(int userId);
+        Builder setUserId(long userId);
         Builder setSort(String sort);
         Builder setSortDesc(boolean sortDesc);
     }
@@ -189,15 +203,15 @@ public class WalletDataBuilders {
 
     interface ListContactsPrivilegeBuilder<Builder> {
         Builder setId(long id);
-        Builder setUserId(int userId);
-        Builder setAuthUserId(int authUserId);
+        Builder setUserId(long userId);
+        Builder setAuthUserId(long authUserId);
         Builder setCreateTime(long createTime);
     }
 
     interface ContactPaymentsPrivilegeBuilder<Builder> {
         Builder setId(long id);
-        Builder setUserId(int userId);
-        Builder setAuthUserId(int authUserId);
+        Builder setUserId(long userId);
+        Builder setAuthUserId(long authUserId);
         Builder setCreateTime(long createTime);
         Builder setContactId(long contactId);
     }
@@ -248,8 +262,8 @@ public class WalletDataBuilders {
     interface InvoiceBuilder<Builder> {
         Builder setId(long id);
         Builder setTxId(String txId);
-        Builder setUserId(int userId);
-        Builder setAuthUserId(int authUserId);
+        Builder setUserId(long userId);
+        Builder setAuthUserId(long authUserId);
         Builder setPurpose(String purpose);
         Builder setDescription(String description);
         Builder setPreimageHex(String preimageHex);
@@ -291,9 +305,9 @@ public class WalletDataBuilders {
 
     interface ChannelBuilder<Builder> {
         Builder setId(long id);
-        Builder setUserId(int userId);
+        Builder setUserId(long userId);
         Builder setTxId(String txId);
-        Builder setAuthUserId(int authUserId);
+        Builder setAuthUserId(long authUserId);
         Builder setDescription(String description);
         Builder setTargetConf(int targetConf);
         Builder setSatPerByte(long satPerByte);
@@ -306,11 +320,6 @@ public class WalletDataBuilders {
         Builder setSettledBalance(long settledBalance);
         Builder setTimeLockedBalance(long timeLockedBalance);
         Builder setCloseType(int closeType);
-        Builder setTries(int tries);
-        Builder setMaxTries(int maxTries);
-        Builder setMaxTryTime(long maxTryTime);
-        Builder setLastTryTime(long lastTryTime);
-        Builder setNextTryTime(long nextTryTime);
         Builder setState(int state);
         Builder setErrorCode(String errorCode);
         Builder setErrorMessage(String errorMessage);
@@ -324,6 +333,10 @@ public class WalletDataBuilders {
         Builder setCapacity(long capacity);
         Builder setLocalBalance(long localBalance);
         Builder setRemoteBalance(long remoteBalance);
+        Builder setConfirmationHeight(int confirmationHeight);
+        Builder setLimboBalance(long limboBalance);
+        Builder setMaturityHeight(int maturityHeight);
+        Builder setRecoveredBalance(long recoveredBalance);
         Builder setCommitFee(long commitFee);
         Builder setCommitWeight(long commitWeight);
         Builder setFeePerKw(long feePerKw);
@@ -354,6 +367,13 @@ public class WalletDataBuilders {
         Builder setRemoteCsvDelay(int remoteCsvDelay);
         Builder setMinConfs(int minConfs);
         Builder setSpendUnconfirmed(boolean spendUnconfirmed);
+    }
+
+    interface CloseChannelRequestBuilder<Builder> {
+        Builder setChannelId(long channelId);
+        Builder setForce(boolean force);
+        Builder setTargetConf(int targetConf);
+        Builder setSatPerByte(long satPerByte);
     }
 
     interface SendPaymentRequestBuilder<RouteHint, Builder> {
@@ -406,7 +426,7 @@ public class WalletDataBuilders {
         Builder setInvoices(ImmutableMap<Long,Invoice> invoices);
         Builder setInvoiceHTLCs(ImmutableMap<Long,InvoiceHTLC> htlcs);
 
-        Builder setUserId(int userId);
+        Builder setUserId(long userId);
         Builder setTime(long time);
         Builder setPeerPubkey(String peerPubkey);
         Builder setMessage(String message);
@@ -415,14 +435,9 @@ public class WalletDataBuilders {
     interface SendPaymentBuilder<RouteHint, Builder> {
         Builder setId(long id);
         Builder setTxId(String txId);
-        Builder setUserId(int userId);
-        Builder setAuthUserId(int authUserId);
+        Builder setUserId(long userId);
+        Builder setAuthUserId(long authUserId);
         Builder setPurpose(String purpose);
-        Builder setTries(int tries);
-        Builder setMaxTries(int maxTries);
-        Builder setMaxTryTime(long maxTryTime);
-        Builder setLastTryTime(long lastTryTime);
-        Builder setNextTryTime(long nextTryTime);
         Builder setState(int state);
         Builder setErrorCode(String errorCode);
         Builder setErrorMessage(String errorMessage);
@@ -458,8 +473,33 @@ public class WalletDataBuilders {
 
     interface ConnectPeerRequestBuilder<Builder>{
         Builder setPubkey(String pubkey);
-        Builder setHost(String host);
+        Builder setAddress(String address);
         Builder setPerm(boolean perm);
+    }
+
+    interface DisconnectPeerRequestBuilder<Builder>{
+        Builder setId(long id);
+        Builder setContactId(long contactId);
+        Builder setPubkey(String pubkey);
+    }
+
+    interface PeerBuilder<Builder> {
+        Builder setId(long id);
+        Builder setPubkey(String pubkey);
+        Builder setAddress(String address);
+        Builder setBytesSent(long bytesSent);
+        Builder setBytesRecv(long bytesRecv);
+        Builder setSatsSent(long satsSent);
+        Builder setSatsRecv(long satsRecv);
+        Builder setInbound(boolean inbound);
+        Builder setPingTime(long pingTime);
+        Builder setSyncType(int syncType);
+        Builder setFeatures(ImmutableList<Integer> features);
+        Builder setPerm(boolean perm);
+        Builder setOnline(boolean online);
+        Builder setDisabled(boolean disabled);
+        Builder setLastConnectTime(long lastConnectTime);
+        Builder setLastDisconnectTime(long lastDisconnectTime);
     }
 
     interface AddContactInvoiceResponseBuilder<Builder>{
@@ -514,6 +554,117 @@ public class WalletDataBuilders {
         Builder setAlias(String alias);
         Builder setColor(String color);
         Builder setFeatures(ImmutableList<Integer> features);
+    }
+
+    interface SendCoinsRequestBuilder<Builder> {
+        Builder setPurpose(String purpose);
+        Builder setMaxTries(int maxTries);
+        Builder setMaxTryTime(long maxTryTime);
+        Builder setAddrToAmount(ImmutableMap<String, Long> addrToAmount);
+        Builder setTargetConf(int targetConf);
+        Builder setSatPerByte(long satPerByte);
+        Builder setSendAll(boolean sendAll);
+    }
+
+    interface TransactionBuilder<Builder> {
+        Builder setId(long id);
+        Builder setTxId(String txId);
+        Builder setUserId(long userId);
+        Builder setAuthUserId(long authUserId);
+        Builder setCreateTime(long createTime);
+        Builder setSendTime(long sendTime);
+        Builder setPurpose(String purpose);
+        Builder setState(int state);
+        Builder setErrorCode(String errorCode);
+        Builder setErrorMessage(String errorMessage);
+        Builder setAddrToAmount(ImmutableMap<String, Long> addrToAmount);
+        Builder setTargetConf(int targetConf);
+        Builder setSatPerByte(long satPerByte);
+        Builder setSendAll(boolean sendAll);
+        Builder setTxHash(String txHash);
+        Builder setAmount(long amount);
+        Builder setNumConfirmations(int numConfirmations);
+        Builder setBlockHash(String blockHash);
+        Builder setBlockHeight(int blockHeight);
+        Builder setTimestamp(long timestamp);
+        Builder setTotalFees(long totalFees);
+        Builder setDestAddresses(ImmutableList<String> destAddresses);
+        Builder setRawTxHex(String rawTxHex);
+    }
+
+    interface ListTransactionsRequestBuilder<Builder> {
+        Builder setOnlyOwn(boolean onlyOwn);
+        Builder setNoAuth(boolean noAuth);
+        Builder setEnablePaging(boolean enablePaging);
+
+        Builder setUserId(long userId);
+        Builder setTimeFrom(long timeFrom);
+        Builder setTimeTill(long timeTill);
+
+        Builder setSort(String sort);
+        Builder setSortDesc(boolean sortDesc);
+    }
+
+    interface EstimateFeeRequestBuilder<Builder> {
+        Builder setAddrToAmount(ImmutableMap<String, Long> addrToAmount);
+        Builder setTargetConf(int targetConf);
+    }
+
+    interface EstimateFeeResponseBuilder<Builder> {
+        Builder setFeeSat(long feeSat);
+        Builder setFeerateSatPerByte(long feerateSatPerByte);
+    }
+
+    interface UtxoBuilder<Builder> {
+        Builder setId(long id);
+        Builder setType(int type);
+        Builder setAddress(String address);
+        Builder setAmountSat(long amountSat);
+        Builder setPkScript(String pkScript);
+        Builder setTxidHex(String txidHex);
+        Builder setOutputIndex(int outputIndex);
+        Builder setConfirmations(long confirmations);
+    }
+
+    interface ListUtxoRequestBuilder<Builder> {
+        Builder setOnlyOwn(boolean onlyOwn);
+        Builder setNoAuth(boolean noAuth);
+        Builder setEnablePaging(boolean enablePaging);
+
+        Builder setMinConfirmations(long minConfirmations);
+        Builder setMaxConfirmations(long maxConfirmations);
+        Builder setSort(String sort);
+        Builder setSortDesc(boolean sortDesc);
+    }
+
+    interface ListChannelsRequestBuilder<Builder> {
+        Builder setOnlyOwn(boolean onlyOwn);
+        Builder setNoAuth(boolean noAuth);
+        Builder setEnablePaging(boolean enablePaging);
+
+        Builder setUserId(long userId);
+        Builder setStateFilter(String stateFilter);
+        Builder setSort(String sort);
+        Builder setSortDesc(boolean sortDesc);
+    }
+
+    interface ListPeersRequestBuilder<Builder> {
+        Builder setOnlyOwn(boolean onlyOwn);
+        Builder setNoAuth(boolean noAuth);
+        Builder setEnablePaging(boolean enablePaging);
+        Builder setAuthUserId(long authUserId);
+        Builder setStateFilter(String stateFilter);
+        Builder setSort(String sort);
+        Builder setSortDesc(boolean sortDesc);
+    }
+
+    interface ListUsersRequestBuilder<Builder> {
+        Builder setOnlyOwn(boolean onlyOwn);
+        Builder setNoAuth(boolean noAuth);
+        Builder setEnablePaging(boolean enablePaging);
+        Builder setRole(String role);
+        Builder setSort(String sort);
+        Builder setSortDesc(boolean sortDesc);
     }
 
 }

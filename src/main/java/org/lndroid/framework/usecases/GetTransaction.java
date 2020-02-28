@@ -1,21 +1,21 @@
 package org.lndroid.framework.usecases;
 
-import java.io.IOException;
-import java.lang.reflect.Type;
-
 import org.lndroid.framework.WalletData;
 import org.lndroid.framework.client.IPluginClient;
 import org.lndroid.framework.common.IPluginData;
 import org.lndroid.framework.defaults.DefaultPlugins;
 
-public class GetInvoice extends GetData<WalletData.Invoice, Long> {
-    public GetInvoice(IPluginClient client){
-        super(client, DefaultPlugins.GET_INVOICE);
+import java.io.IOException;
+import java.lang.reflect.Type;
+
+public class GetTransaction extends GetData<WalletData.Transaction, Long> {
+    public GetTransaction(IPluginClient client){
+        super(client, DefaultPlugins.GET_TRANSACTION);
     }
 
     @Override
-    protected WalletData.Invoice getData(IPluginData in) {
-        in.assignDataType(WalletData.Invoice.class);
+    protected WalletData.Transaction getData(IPluginData in) {
+        in.assignDataType(WalletData.Transaction.class);
         try {
             return in.getData();
         } catch (IOException e) {
@@ -28,3 +28,4 @@ public class GetInvoice extends GetData<WalletData.Invoice, Long> {
         return WalletData.GetRequestLong.class;
     }
 }
+
