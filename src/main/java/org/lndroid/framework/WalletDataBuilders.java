@@ -9,7 +9,6 @@ public class WalletDataBuilders {
         T build();
     }
 
-
     interface FieldBuilder<Builder> {
         Builder setId(String id);
         Builder setName(String name);
@@ -126,14 +125,19 @@ public class WalletDataBuilders {
         Builder setFeatures(ImmutableList<Integer> features);
     }
 
-    interface AddContactRequestBuilder<Builder>{
+    interface AddContactRequestBuilder<RouteHint, Builder>{
         Builder setPubkey(String pubkey);
         Builder setName(String name);
         Builder setDescription(String description);
         Builder setUrl(String url);
+        Builder setRouteHints(ImmutableList<RouteHint> routeHints);
+        Builder setFeatures(ImmutableList<Integer> features);
     }
 
     interface AddAppContactRequestBuilder<Builder> {
+        Builder setName(String name);
+        Builder setDescription(String description);
+        Builder setUrl(String url);
     }
 
     interface ListPageBuilder<Builder> {
@@ -156,11 +160,14 @@ public class WalletDataBuilders {
         Builder setTxId(String txId);
         Builder setPreimageHex(String preimageHex);
         Builder setPreimageHashHex(String preimageHashHex);
+        Builder setNoKeysend(boolean noKeysend);
         Builder setAuthUserId(long authUserId);
         Builder setCreateFrom(long createFrom);
         Builder setCreateTill(long createTill);
         Builder setSettleFrom(long settleFrom);
         Builder setSettleTill(long settleTill);
+        Builder setNotifyFrom(long notifyFrom);
+        Builder setNotifyTill(long notifyTill);
         Builder setStates(ImmutableList<Integer> states);
         Builder setDescription(String description);
         Builder setPurpose(String purpose);
@@ -270,6 +277,7 @@ public class WalletDataBuilders {
         Builder setPreimageHashHex(String preimageHashHex);
         Builder setValueSat(long valueSat);
         Builder setCreateTime(long createTime);
+        Builder setNotifyTime(long notifyTime);
         Builder setSettleTime(long settleTime);
         Builder setPaymentRequest(String paymentRequest);
         Builder setDescriptionHashHex(String descriptionHashHex);
@@ -284,6 +292,8 @@ public class WalletDataBuilders {
         Builder setHtlcsCount(int htlcsCount);
         Builder setIsKeysend(boolean isKeysend);
         Builder setFeatures(ImmutableList<Integer> features);
+        Builder setMessage(String message);
+        Builder setSenderPubkey(String senderPubkey);
     }
 
     interface InvoiceHTLCBuilder<Builder> {
@@ -572,6 +582,7 @@ public class WalletDataBuilders {
         Builder setUserId(long userId);
         Builder setAuthUserId(long authUserId);
         Builder setCreateTime(long createTime);
+        Builder setNotifyTime(long notifyTime);
         Builder setSendTime(long sendTime);
         Builder setPurpose(String purpose);
         Builder setState(int state);
@@ -667,4 +678,32 @@ public class WalletDataBuilders {
         Builder setSortDesc(boolean sortDesc);
     }
 
+    interface NotifiedInvoicesRequestBuilder<Builder> {
+        Builder setInvoiceIds(ImmutableList<Long> invoiceIds);
+    }
+
+    interface NotifiedInvoicesResponseBuilder<Builder> {
+    }
+
+    interface SubscribeNewPaidInvoicesRequestBuilder<Builder> {
+        Builder setNoAuth(boolean noAuth);
+        Builder setProtocolExtension(String protocolExtension);
+        Builder setComponentPackageName(String componentPackageName);
+        Builder setComponentClassName(String componentClassName);
+    }
+
+    interface BackgroundInfoBuilder<Builder> {
+        Builder setIsActive(boolean isActive);
+        Builder setActiveSendPaymentCount(long activeSendPaymentCount);
+        Builder setActiveOpenChannelCount(long activeOpenChannelCount);
+        Builder setActiveCloseChannelCount(long activeCloseChannelCount);
+        Builder setActiveSendCoinCount(long activeSendCoinCount);
+        Builder setPendingChannelCount(long pendingChannelCount);
+    }
+
+    interface PaidInvoicesEventBuilder<Builder> {
+        Builder setInvoiceIds(ImmutableList<Long> invoiceIds);
+        Builder setSatsReceived(long satsReceived);
+        Builder setInvoicesCount(long invoicesCount);
+    }
 }

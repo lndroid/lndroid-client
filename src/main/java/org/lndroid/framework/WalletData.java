@@ -232,7 +232,7 @@ public final class WalletData {
     public static final String USER_ROLE_ROOT = "root";
     public static final String USER_ROLE_USER = "user";
     public static final String USER_ROLE_APP = "app";
-    public static final String USER_ROLE_BG = "bg";
+    public static final String USER_ROLE_ANON = "anon";
 
     public static final String AUTH_TYPE_NONE = "none";
     public static final String AUTH_TYPE_PASSWORD = "password";
@@ -248,9 +248,11 @@ public final class WalletData {
         public boolean isRoot() {
             return role().equals(USER_ROLE_ROOT);
         }
-
         public boolean isApp() {
             return role().equals(USER_ROLE_APP);
+        }
+        public boolean isAnonymous() {
+            return role().equals(USER_ROLE_ANON);
         }
 
         public static User create(
@@ -736,10 +738,13 @@ public final class WalletData {
                     .setUserId(0)
                     .setInvoiceId(0)
                     .setAuthUserId(0)
+                    .setNoKeysend(false)
                     .setCreateFrom(0)
                     .setCreateTill(0)
                     .setSettleFrom(0)
                     .setSettleTill(0)
+                    .setNotifyFrom(0)
+                    .setNotifyTill(0)
                     .setOnlyOwn(false)
                     .setNoAuth(false)
                     .setEnablePaging(false)
@@ -819,6 +824,7 @@ public final class WalletData {
                 String preimageHashHex,
                 long valueSat,
                 long createTime,
+                long notifyTime,
                 long settleTime,
                 String paymentRequest,
                 String descriptionHashHex,
@@ -832,7 +838,9 @@ public final class WalletData {
                 int state,
                 int htlcsCount,
                 boolean isKeysend,
-                ImmutableList<Integer> features
+                ImmutableList<Integer> features,
+                String message,
+                String senderPubkey
         ) {
             return builder()
                     .setId(id)
@@ -845,6 +853,7 @@ public final class WalletData {
                     .setPreimageHashHex(preimageHashHex)
                     .setValueSat(valueSat)
                     .setCreateTime(createTime)
+                    .setNotifyTime(notifyTime)
                     .setSettleTime(settleTime)
                     .setPaymentRequest(paymentRequest)
                     .setDescriptionHashHex(descriptionHashHex)
@@ -859,6 +868,8 @@ public final class WalletData {
                     .setHtlcsCount(htlcsCount)
                     .setIsKeysend(isKeysend)
                     .setFeatures(features)
+                    .setMessage(message)
+                    .setSenderPubkey(senderPubkey)
                     .build();
         }
 
@@ -869,6 +880,7 @@ public final class WalletData {
                     .setAuthUserId(0)
                     .setValueSat(0)
                     .setCreateTime(0)
+                    .setNotifyTime(0)
                     .setSettleTime(0)
                     .setExpiry(0)
                     .setCltvExpiry(0)
@@ -1773,19 +1785,23 @@ public final class WalletData {
 
     @AutoValue
     @AutoValueClass(className = AutoValue_WalletData_AddContactRequest.class)
-    public static abstract class AddContactRequest implements WalletDataDecl.AddContactRequest {
+    public static abstract class AddContactRequest implements WalletDataDecl.AddContactRequest<RouteHint> {
 
         public static AddContactRequest create(
                 String pubkey,
                 String name,
                 String description,
-                String url
+                String url,
+                ImmutableList<RouteHint> routeHints,
+                ImmutableList<Integer> features
         ) {
             return builder()
                     .setPubkey(pubkey)
                     .setName(name)
                     .setDescription(description)
                     .setUrl(url)
+                    .setRouteHints(routeHints)
+                    .setFeatures(features)
                     .build();
         }
 
@@ -1797,9 +1813,9 @@ public final class WalletData {
 
         @AutoValue.Builder
         public abstract static class Builder implements
-                WalletDataDecl.AddContactRequest,
+                WalletDataDecl.AddContactRequest<RouteHint>,
                 WalletDataBuilders.IBuilder<AddContactRequest>,
-                WalletDataBuilders.AddContactRequestBuilder<Builder> {
+                WalletDataBuilders.AddContactRequestBuilder<RouteHint, Builder> {
         }
     }
 
@@ -1807,8 +1823,16 @@ public final class WalletData {
     @AutoValueClass(className = AutoValue_WalletData_AddAppContactRequest.class)
     public static abstract class AddAppContactRequest implements WalletDataDecl.AddAppContactRequest {
 
-        public static AddAppContactRequest create() {
-            return builder().build();
+        public static AddAppContactRequest create(
+                String name,
+                String description,
+                String url
+        ) {
+            return builder()
+                    .setName(name)
+                    .setDescription(description)
+                    .setUrl(url)
+                    .build();
         }
 
         public static Builder builder() {
@@ -2406,6 +2430,7 @@ public final class WalletData {
                 long userId,
                 long authUserId,
                 long createTime,
+                long notifyTime,
                 long sendTime,
                 String purpose,
                 int state,
@@ -2431,6 +2456,7 @@ public final class WalletData {
                     .setUserId(userId)
                     .setAuthUserId(authUserId)
                     .setCreateTime(createTime)
+                    .setNotifyTime(notifyTime)
                     .setSendTime(sendTime)
                     .setPurpose(purpose)
                     .setState(state)
@@ -2458,6 +2484,7 @@ public final class WalletData {
                     .setUserId(0)
                     .setAuthUserId(0)
                     .setCreateTime(0)
+                    .setNotifyTime(0)
                     .setSendTime(0)
                     .setState(TRANSACTION_STATE_NEW)
                     .setTargetConf(0)
@@ -2899,6 +2926,174 @@ public final class WalletData {
                 WalletDataDecl.ListResultTmpl<User>,
                 WalletDataBuilders.IBuilder<ListUsersResult>,
                 WalletDataBuilders.ListResultTmplBuilder<User, Builder> {
+        }
+    }
+
+    @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_NotifiedInvoicesRequest.class)
+    public static abstract class NotifiedInvoicesRequest implements WalletDataDecl.NotifiedInvoicesRequest {
+
+        public static NotifiedInvoicesRequest create(
+                ImmutableList<Long> invoiceIds
+        ) {
+            return builder()
+                    .setInvoiceIds(invoiceIds)
+                    .build();
+        }
+
+        public static Builder builder() {
+            return new AutoValue_WalletData_NotifiedInvoicesRequest.Builder();
+        }
+
+        public abstract Builder toBuilder();
+
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataDecl.NotifiedInvoicesRequest,
+                WalletDataBuilders.IBuilder<NotifiedInvoicesRequest>,
+                WalletDataBuilders.NotifiedInvoicesRequestBuilder<Builder> {
+        }
+    }
+
+    @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_NotifiedInvoicesResponse.class)
+    public static abstract class NotifiedInvoicesResponse implements WalletDataDecl.NotifiedInvoicesResponse {
+
+        public static NotifiedInvoicesResponse create(
+        ) {
+            return builder()
+                    .build();
+        }
+
+        public static Builder builder() {
+            return new AutoValue_WalletData_NotifiedInvoicesResponse.Builder();
+        }
+
+        public abstract Builder toBuilder();
+
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataDecl.NotifiedInvoicesResponse,
+                WalletDataBuilders.IBuilder<NotifiedInvoicesResponse>,
+                WalletDataBuilders.NotifiedInvoicesResponseBuilder<Builder> {
+        }
+    }
+
+    public static final String PROTOCOL_MESSAGES = "org.lndroid.protocols.MESSAGES";
+
+    @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_SubscribeNewPaidInvoicesRequest.class)
+    public static abstract class SubscribeNewPaidInvoicesRequest
+            implements WalletDataDecl.SubscribeNewPaidInvoicesRequest {
+
+        public static SubscribeNewPaidInvoicesRequest create(
+                boolean noAuth,
+                String protocolExtension,
+                String componentPackageName,
+                String componentClassName
+        ) {
+            return builder()
+                    .setNoAuth(noAuth)
+                    .setProtocolExtension(protocolExtension)
+                    .setComponentPackageName(componentPackageName)
+                    .setComponentClassName(componentClassName)
+                    .build();
+        }
+
+        public static Builder builder() {
+            return new AutoValue_WalletData_SubscribeNewPaidInvoicesRequest.Builder()
+                    // defaults
+                    .setNoAuth(false)
+                    ;
+        }
+
+        public abstract Builder toBuilder();
+
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataDecl.SubscribeNewPaidInvoicesRequest,
+                WalletDataBuilders.IBuilder<SubscribeNewPaidInvoicesRequest>,
+                WalletDataBuilders.SubscribeNewPaidInvoicesRequestBuilder<Builder> {
+        }
+    }
+
+    @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_BackgroundInfo.class)
+    public static abstract class BackgroundInfo implements WalletDataDecl.BackgroundInfo{
+
+        public static Builder builder() {
+            return new AutoValue_WalletData_BackgroundInfo.Builder()
+                    .setIsActive(false)
+                    .setActiveSendPaymentCount(0)
+                    .setActiveOpenChannelCount(0)
+                    .setActiveCloseChannelCount(0)
+                    .setActiveSendCoinCount(0)
+                    .setPendingChannelCount(0)
+                    ;
+        }
+
+        public abstract Builder toBuilder();
+
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataDecl.BackgroundInfo,
+                WalletDataBuilders.IBuilder<BackgroundInfo>,
+                WalletDataBuilders.BackgroundInfoBuilder<Builder> {
+        }
+    }
+
+    @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_PaidInvoicesEvent.class)
+    public static abstract class PaidInvoicesEvent implements WalletDataDecl.PaidInvoicesEvent{
+
+        public static PaidInvoicesEvent create(
+                ImmutableList<Long> invoiceIds,
+                long satsReceived,
+                long invoicesCount
+        ) {
+            return builder()
+                    .setInvoiceIds(invoiceIds)
+                    .setSatsReceived(satsReceived)
+                    .setInvoicesCount(invoicesCount)
+                    .build();
+        }
+
+        public static Builder builder() {
+            return new AutoValue_WalletData_PaidInvoicesEvent.Builder()
+                    .setSatsReceived(0)
+                    .setInvoicesCount(0)
+                    ;
+        }
+
+        public abstract Builder toBuilder();
+
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataDecl.PaidInvoicesEvent,
+                WalletDataBuilders.IBuilder<PaidInvoicesEvent>,
+                WalletDataBuilders.PaidInvoicesEventBuilder<Builder> {
+        }
+    }
+
+    @AutoValue
+    @AutoValueClass(className = AutoValue_WalletData_SubscribePaidInvoicesEventsRequest.class)
+    public static abstract class SubscribePaidInvoicesEventsRequest {
+
+        public static SubscribePaidInvoicesEventsRequest create(
+        ) {
+            return builder()
+                    .build();
+        }
+
+        public static Builder builder() {
+            return new AutoValue_WalletData_SubscribePaidInvoicesEventsRequest.Builder();
+        }
+
+        public abstract Builder toBuilder();
+
+        @AutoValue.Builder
+        public abstract static class Builder implements
+                WalletDataBuilders.IBuilder<SubscribePaidInvoicesEventsRequest> {
         }
     }
 

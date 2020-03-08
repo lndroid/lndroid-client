@@ -31,12 +31,15 @@ public final class DefaultPlugins {
     public static final String SEND_PAYMENT = "org.lndroid.plugins.SEND_PAYMENT";
     public static final String SEND_PAYMENT_WORKER = "org.lndroid.plugins.SEND_PAYMENT_WORKER";
     public static final String GET_SEND_PAYMENT = "org.lndroid.plugins.GET_SEND_PAYMENT";
-    public static final String SUBSCRIBE_SEND_PAYMENTS = "org.lndroid.plugins.SUBSCRIBE_SEND_PAYMENTS";
+    public static final String SUBSCRIBE_BACKGROUND_INFO = "org.lndroid.plugins.SUBSCRIBE_BACKGROUND_INFO";
 
     public static final String ADD_INVOICE = "org.lndroid.plugins.ADD_INVOICE";
     public static final String INVOICE_STATE_WORKER = "org.lndroid.plugins.INVOICE_STATE_WORKER";
     public static final String LIST_INVOICES = "org.lndroid.plugins.LIST_INVOICES";
     public static final String GET_INVOICE = "org.lndroid.plugins.GET_INVOICE";
+    public static final String SET_NOTIFIED_INVOICES = "org.lndroid.plugins.SET_NOTIFIED_INVOICES";
+    public static final String SUBSCRIBE_NEW_PAID_INVOICES = "org.lndroid.plugins.SUBSCRIBE_NEW_PAID_INVOICES";
+    public static final String SUBSCRIBE_PAID_INVOICES_EVENTS = "org.lndroid.plugins.SUBSCRIBE_PAID_INVOICES_EVENTS";
 
     public static final String OPEN_CHANNEL = "org.lndroid.plugins.OPEN_CHANNEL";
     public static final String OPEN_CHANNEL_WORKER = "org.lndroid.plugins.OPEN_CHANNEL_WORKER";
@@ -48,8 +51,10 @@ public final class DefaultPlugins {
 
     public static final String LIST_PAYMENTS = "org.lndroid.plugins.LIST_PAYMENTS";
 
+    public static final String ADD_CONTACT = "org.lndroid.plugins.ADD_CONTACT";
     public static final String ADD_APP_CONTACT = "org.lndroid.plugins.ADD_APP_CONTACT";
     public static final String GET_CONTACT = "org.lndroid.plugins.GET_CONTACT";
+    public static final String GET_PAYMENT_PEER_CONTACT = "org.lndroid.plugins.GET_PAYMENT_PEER_CONTACT";
     public static final String LIST_CONTACTS = "org.lndroid.plugins.LIST_CONTACTS";
 
     public static final String ADD_LIST_CONTACTS_PRIVILEGE = "org.lndroid.plugins.ADD_LIST_CONTACTS_PRIVILEGE";
