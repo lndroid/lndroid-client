@@ -116,6 +116,12 @@ public abstract class GetData<DataType, /*optional*/IdType> extends GetDataBg<Da
         }
 
         private void buildPagedList(boolean restart){
+
+            // avoid parallel calls
+            if (pagerCb_ != null) {
+                return;
+            }
+
             // get current cursor
             String initializeKey = null;
             if (pagedList_.getValue() != null) {
@@ -161,15 +167,15 @@ public abstract class GetData<DataType, /*optional*/IdType> extends GetDataBg<Da
 
                 @Override
                 public void onError(String code, String e) {
-                    pagedList_.setValue(pagedList);
-                    pagerCb_ = null;
+                    this.onResponse(null);
                 }
             };
 
             // if we're not restarting the tx but reusing existing
             // value then pagedList should be set immediately
-            if (!restart)
+            if (!restart) {
                 pagerCb_.onResponse(data_.getValue());
+            }
         }
 
         @Override
